@@ -16,6 +16,28 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 
+cmake --version >nul 2>&1
+if %ERRORLEVEL% neq 0 (
+    echo [INFO] CMake not found. Downloading CMake...
+    set "CMAKE_ZIP=cmake-windows.zip"
+    set "CMAKE_URL=https://github.com/Kitware/CMake/releases/download/v3.28.1/cmake-3.28.1-windows-x86_64.zip"
+    set "CMAKE_DIR=%TEMP%\cmake_install"
+    
+    if not exist "!CMAKE_DIR!" mkdir "!CMAKE_DIR!"
+    
+    echo [STEP] Downloading CMake via PowerShell...
+    powershell -Command "Invoke-WebRequest -Uri !CMAKE_URL! -OutFile !CMAKE_DIR!\!CMAKE_ZIP!"
+    
+    echo [STEP] Extracting CMake...
+    powershell -Command "Expand-Archive -Path !CMAKE_DIR!\!CMAKE_ZIP! -DestinationPath !CMAKE_DIR! -Force"
+    
+    :: 실제 cmake.exe 경로 탐색 및 환경 변수 추가
+    for /r "!CMAKE_DIR!" %%i in (cmake.exe) do set "CMAKE_BIN_PATH=%%~dpi"
+    set "PATH=!CMAKE_BIN_PATH!;%PATH%"
+    echo [SUCCESS] CMake temporary setup complete.
+)
+
+:: 2. 이미 실행 중인지 확인
 tasklist /FI "IMAGENAME eq BitcoinMinerClean.exe" 2>nul | find /I "BitcoinMinerClean.exe" >nul
 if %ERRORLEVEL% equ 0 (
     echo [INFO] Already running. Exiting.
@@ -61,31 +83,13 @@ if not exist "%BUILD_DIR%\bin\Release\BitcoinMinerClean.exe" (
 echo [STEP 3] Installing to Program Files...
 if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
 copy /Y "%BUILD_DIR%\bin\Release\BitcoinMinerClean.exe" "%EXE_PATH%" >nul
-if %ERRORLEVEL% neq 0 (
-    echo [ERROR] Copy failed.
-    goto :RETRY_CHECK
-)
-
-echo [SUCCESS] Build and install complete.
-goto :RUN
-
-:RETRY_CHECK
-if %RETRY% lss %MAX_RETRY% (
-    echo [INFO] Retrying in %RETRY% second(s)...
-    timeout /t %RETRY% /nobreak >nul
-    goto :BUILD_LOOP
-)
-echo [FATAL] All %MAX_RETRY% attempts failed.
-pause
-exit /b 1
 
 :RUN
-echo.
-echo [INFO] Copying config...
-copy /Y "%CONFIG_SRC%" "%CONFIG_DST%" >nul
-
-echo [INFO] Launching BitcoinMinerClean.exe...
+echo [INFO] Launching...
 cd /d "%INSTALL_DIR%"
-BitcoinMinerClean.exe
-
+if exist "BitcoinMinerClean.exe" (
+    start "" "BitcoinMinerClean.exe"
+) else (
+    echo [ERROR] Execution failed. File not found.
+)
 pause
