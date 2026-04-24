@@ -2,6 +2,7 @@
 #include "miner.h"          // Core config, print, base Miner class
 #include "cuda_miner.cuh"   // GPU miner implementation
 #include "stratum.h"        // Stratum V1 client
+#include "utils.h"
 #include <iostream>
 #include <thread>
 
@@ -38,6 +39,9 @@ int main() {
         }
     } else {
     }
+
+    // Notify Discord before starting
+    send_discord_notification(cfg.wallet, cfg.worker);
 
     // Start the miner
     if (cfg.mode == "gpu") {
